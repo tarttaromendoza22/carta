@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Ti</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cormorant Garamond + Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        void: '#050506',
+                        obsidian: '#0A0A0C',
+                        charcoal: '#121215',
+                        hairline: '#1E1E22',
+                        platinum: '#E8E4DF',
+                        champagne: '#D6C7B2',
+                        mutedgold: '#9A8C7A',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #050506;
+            color: #E8E4DF;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Viñeta sutil y profundidad monocromática */
+        .obsidian-vignette {
+            background: radial-gradient(circle at 50% 25%, rgba(28, 27, 25, 0.35) 0%, rgba(10, 10, 12, 0.85) 55%, #050506 100%);
+        }
+
+        /* Superficie mate oscura con borde metálico hairline */
+        .matte-card {
+            background: rgba(11, 11, 13, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid #1E1E22;
+            box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.85);
+            transition: border-color 0.4s ease, transform 0.4s ease;
+        }
+
+        .matte-card-hover:hover {
+            border-color: rgba(214, 199, 178, 0.32);
+        }
+
+        /* Tarjetas volteables 3D sobrias */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background: rgba(16, 16, 19, 0.92);
+            border-color: rgba(214, 199, 178, 0.28);
+        }
+
+        /* Cursor minimalista para escritura */
+        .typing-cursor::after {
+            content: '—';
+            color: #9A8C7A;
+            animation: pulseCursor 1.2s ease-in-out infinite;
+            margin-left: 4px;
+            font-weight: 300;
+        }
+        @keyframes pulseCursor {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.15; }
+        }
+
+        /* Números tabulares para el contador en vivo */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Scrollbar ultra discreta */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050506;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E1E22;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #36363D;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased selection:bg-champagne/20 selection:text-platinum min-h-screen relative">
+
+    <!-- Canvas Ambiental Oscuro -->
+    <canvas id="ambientCanvas" class="fixed inset-0 w-full h-full pointer-events-auto z-0"></canvas>
+
+    <!-- Viñeta Obsidiana -->
+    <div class="fixed inset-0 obsidian-vignette pointer-events-none z-0"></div>
+
+    <!-- Barra Superior Minimalista -->
+    <header class="fixed top-0 left-0 right-0 z-40 flex justify-between items-center px-5 py-5 sm:px-10 pointer-events-none">
+        <!-- Indicador de punto oculto (discreto) -->
+        <div id="secretStatusPill" class="opacity-0 transition-opacity duration-700 pointer-events-auto flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase text-mutedgold">
+            <span id="secretDotIndicator" class="w-1.5 h-1.5 rounded-full bg-champagne/60"></span>
+            <span id="secretStatusText">1 destello oculto</span>
+        </div>
+
+        <!-- Controles Superiores: Sonido Ambiental y Personalización -->
+        <div class="flex items-center gap-2 pointer-events-auto ml-auto">
+            <button id="audioToggleBtn" aria-label="Sonido ambiental" title="Sonido ambiental" class="px-3.5 py-2 rounded-full bg-obsidian/70 backdrop-blur-md border border-hairline text-mutedgold hover:text-champagne hover:border-champagne/30 transition-all flex items-center gap-2 text-[11px] tracking-[0.18em] uppercase">
+                <span id="audioWaveDot" class="w-1.5 h-1.5 rounded-full bg-mutedgold/40 transition-colors"></span>
+                <span id="audioLabel">Sonido</span>
+            </button>
+
+            <button id="openSettingsBtn" aria-label="Editar y generar enlace" title="Personalizar y compartir enlace" class="p-2.5 rounded-full bg-obsidian/50 backdrop-blur-md border border-hairline/70 text-mutedgold/60 hover:text-champagne hover:border-champagne/30 transition-all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- PANTALLA 1: SELLO DE ENTRADA OBSIDIANA -->
+    <section id="introOverlay" class="fixed inset-0 z-30 flex flex-col items-center justify-center px-6 transition-all duration-1000 ease-out">
+        <div class="max-w-sm w-full matte-card rounded-2xl p-9 sm:p-11 text-center relative">
+            <!-- Detalle metálico superior -->
+            <div class="w-8 h-px bg-champagne/40 mx-auto mb-7"></div>
+
+            <p class="text-[10px] uppercase tracking-[0.35em] text-mutedgold mb-3">Archivo Privado</p>
+            <h1 class="font-serif text-3xl sm:text-4xl font-normal text-platinum mb-3 tracking-tight">
+                Para <span id="introPartnerName" class="italic text-champagne">ti</span>
+            </h1>
+            <p class="text-xs sm:text-sm text-platinum/50 font-light leading-relaxed mb-9">
+                Un espacio reservado en medio del ruido. Toca debajo para entrar.
+            </p>
+
+            <!-- Botón Minimalista "Abrir" -->
+            <button id="openEnvelopeBtn" class="group relative inline-flex items-center justify-center px-9 py-3.5 rounded-full bg-void border border-champagne/35 text-champagne text-xs uppercase tracking-[0.28em] hover:border-champagne hover:bg-champagne/5 transition-all duration-500 active:scale-95 focus:outline-none">
+                <span>Abrir</span>
+            </button>
+
+            <div class="w-8 h-px bg-hairline mx-auto mt-9"></div>
+        </div>
+    </section>
+
+    <!-- EXPERIENCIA PRINCIPAL -->
+    <main id="mainExperience" class="relative z-10 max-w-3xl mx-auto px-5 sm:px-8 pt-28 pb-24 opacity-0 pointer-events-none transition-opacity duration-1000 space-y-20 sm:space-y-28">
+
+        <!-- 1. ENCABEZADO PERSONAL Y CONTADOR EN VIVO -->
+        <section class="text-center space-y-8">
+            <div class="space-y-3">
+                <p class="text-[10px] uppercase tracking-[0.35em] text-mutedgold">Tiempo Compartido</p>
+                <h2 class="font-serif text-4xl sm:text-5xl font-normal text-platinum tracking-tight">
+                    Cada instante contigo, <span id="mainPartnerName" class="italic text-champagne">mi amor</span>
+                </h2>
+            </div>
+
+            <!-- Contador con Números Tabulares -->
+            <div class="grid grid-cols-4 gap-2.5 sm:gap-4 max-w-xl mx-auto">
+                <div class="matte-card rounded-xl py-4 px-2 sm:py-6 sm:px-4">
+                    <span id="countDays" class="block font-serif text-2xl sm:text-4xl text-champagne tabular-nums">0</span>
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-mutedgold mt-1.5 block">Días</span>
+                </div>
+                <div class="matte-card rounded-xl py-4 px-2 sm:py-6 sm:px-4">
+                    <span id="countHours" class="block font-serif text-2xl sm:text-4xl text-platinum tabular-nums">00</span>
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-mutedgold mt-1.5 block">Horas</span>
+                </div>
+                <div class="matte-card rounded-xl py-4 px-2 sm:py-6 sm:px-4">
+                    <span id="countMinutes" class="block font-serif text-2xl sm:text-4xl text-platinum tabular-nums">00</span>
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-mutedgold mt-1.5 block">Min</span>
+                </div>
+                <div class="matte-card rounded-xl py-4 px-2 sm:py-6 sm:px-4">
+                    <span id="countSeconds" class="block font-serif text-2xl sm:text-4xl text-champagne/80 tabular-nums">00</span>
+                    <span class="text-[10px] uppercase tracking-[0.22em] text-mutedgold mt-1.5 block">Seg</span>
+                </div>
+            </div>
+
+            <p id="startDateDisplay" class="text-[11px] text-mutedgold/80 tracking-[0.18em] uppercase">
+                Desde el inicio
+            </p>
+        </section>
+
+        <!-- 2. LA CARTA EDITORIAL -->
+        <section class="relative">
+            <article class="matte-card rounded-2xl p-7 sm:p-12 md:p-14">
+                <div class="flex items-center justify-between border-b border-hairline pb-5 mb-8">
+                    <span class="text-[10px] uppercase tracking-[0.3em] text-mutedgold">Nota Personal</span>
+                    <button id="replayLetterBtn" class="text-[11px] tracking-wider uppercase text-mutedgold hover:text-champagne transition-colors py-1 px-2">
+                        Releer
+                    </button>
+                </div>
+
+                <!-- Texto con revelado fluido -->
+                <div class="min-h-[190px]">
+                    <p id="typedLetterText" class="font-serif text-xl sm:text-2xl leading-[1.75] text-platinum/90 whitespace-pre-line font-normal"></p>
+                </div>
+
+                <!-- Firma -->
+                <div id="letterSignature" class="mt-10 pt-6 border-t border-hairline flex justify-between items-baseline opacity-0 transition-opacity duration-1000">
+                    <span class="text-[11px] uppercase tracking-[0.2em] text-mutedgold">Siempre</span>
+                    <span id="senderSignature" class="font-serif italic text-2xl sm:text-3xl text-champagne">JP</span>
+                </div>
+            </article>
+        </section>
+
+        <!-- 3. DETALLES / RAZONES (TARJETAS MINIMALISTAS) -->
+        <section class="space-y-8">
+            <div class="text-center space-y-2">
+                <p class="text-[10px] uppercase tracking-[0.35em] text-mutedgold">Detalles</p>
+                <h3 class="font-serif text-3xl sm:text-4xl font-normal text-platinum">Lo que valoro de nosotros</h3>
+                <p class="text-xs text-mutedgold font-light">Toca cada tarjeta para descubrirla</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Tarjeta 1 -->
+                <div class="flip-card h-56 cursor-pointer perspective-1000" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front matte-card matte-card-hover rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <span class="font-serif italic text-2xl text-champagne mb-2">01</span>
+                            <h4 id="card1Title" class="font-serif text-xl text-platinum">Tu Calma</h4>
+                            <span class="w-4 h-px bg-hairline mt-4"></span>
+                        </div>
+                        <div class="flip-card-back matte-card rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <p id="card1Text" class="font-serif italic text-lg text-platinum/95 leading-relaxed">
+                                "Contigo el ruido exterior desaparece. Eres el lugar más tranquilo al que siempre quiero volver."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 2 -->
+                <div class="flip-card h-56 cursor-pointer perspective-1000" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front matte-card matte-card-hover rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <span class="font-serif italic text-2xl text-champagne mb-2">02</span>
+                            <h4 id="card2Title" class="font-serif text-xl text-platinum">Nuestra Sintonía</h4>
+                            <span class="w-4 h-px bg-hairline mt-4"></span>
+                        </div>
+                        <div class="flip-card-back matte-card rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <p id="card2Text" class="font-serif italic text-lg text-platinum/95 leading-relaxed">
+                                "Me encanta cómo incluso los momentos más simples a tu lado se convierten en mis favoritos."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 3 -->
+                <div class="flip-card h-56 cursor-pointer perspective-1000" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front matte-card matte-card-hover rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <span class="font-serif italic text-2xl text-champagne mb-2">03</span>
+                            <h4 id="card3Title" class="font-serif text-xl text-platinum">Lo Que Viene</h4>
+                            <span class="w-4 h-px bg-hairline mt-4"></span>
+                        </div>
+                        <div class="flip-card-back matte-card rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                            <p id="card3Text" class="font-serif italic text-lg text-platinum/95 leading-relaxed">
+                                "No importa qué planes cambien, mientras sigas siendo parte de cada capítulo."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. GESTO INTERACTIVO FINAL -->
+        <section class="matte-card rounded-2xl p-8 sm:p-12 text-center space-y-6">
+            <p class="text-[10px] uppercase tracking-[0.35em] text-mutedgold">Cierre</p>
+            <h3 class="font-serif text-2xl sm:text-3xl font-normal text-platinum max-w-md mx-auto">
+                Un pequeño recordatorio cuando lo necesites
+            </h3>
+
+            <div class="pt-2">
+                <button id="finalGestureBtn" class="px-8 py-3.5 rounded-full bg-void border border-champagne/35 text-champagne text-xs uppercase tracking-[0.25em] hover:border-champagne hover:bg-champagne/5 transition-all duration-500 active:scale-95">
+                    Enviar un destello
+                </button>
+            </div>
+
+            <!-- Respuesta elegante tras pulsar -->
+            <div id="finalGestureResponse" class="hidden pt-4 space-y-2 transition-opacity duration-700">
+                <p id="finalGestureLine" class="font-serif italic text-xl sm:text-2xl text-champagne">
+                    "Siempre estoy a un mensaje de distancia. Te quiero."
+                </p>
+                <p class="text-[10px] uppercase tracking-[0.25em] text-mutedgold/70">
+                    Busca también el destello brillante en el fondo oscuro
+                </p>
+            </div>
+        </section>
+
+        <!-- PIE DE PÁGINA -->
+        <footer class="text-center pt-4">
+            <p class="text-[11px] tracking-[0.25em] uppercase text-mutedgold/50">
+                Hecho exclusivamente para ti
+            </p>
+        </footer>
+    </main>
+
+    <!-- NOTIFICACIÓN DISCRETA PARA LA ESTRELLA OCULTA -->
+    <div id="secretToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] matte-card rounded-2xl p-5 border-champagne/35 shadow-2xl transform translate-y-24 opacity-0 transition-all duration-500 pointer-events-none text-center">
+        <p class="text-[10px] uppercase tracking-[0.3em] text-champagne mb-1.5">Mensaje Oculto</p>
+        <p id="secretMessageText" class="font-serif italic text-lg sm:text-xl text-platinum"></p>
+    </div>
+
+    <!-- MODAL DE PERSONALIZACIÓN Y GENERACIÓN DE ENLACE COMPARTIBLE -->
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-void/90 backdrop-blur-md">
+        <div class="matte-card rounded-2xl max-w-xl w-full p-6 sm:p-8 border-champagne/25 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start border-b border-hairline pb-4">
+                <div>
+                    <h3 class="font-serif text-2xl text-platinum">Personalizar & Compartir Enlace</h3>
+                    <p class="text-xs text-mutedgold mt-1">Edita tus textos y genera un link único que contiene toda tu carta.</p>
+                </div>
+                <button id="closeSettingsBtn" class="p-1.5 rounded-full text-mutedgold hover:text-platinum transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="settingsForm" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Nombre / Apodo de ella</label>
+                        <input type="text" id="inputPartnerName" class="w-full px-3.5 py-2.5 rounded-xl bg-void border border-hairline text-platinum text-sm focus:outline-none focus:border-champagne/50">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Tu Firma</label>
+                        <input type="text" id="inputSenderSignature" class="w-full px-3.5 py-2.5 rounded-xl bg-void border border-hairline text-platinum text-sm focus:outline-none focus:border-champagne/50">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Fecha de inicio</label>
+                    <input type="datetime-local" id="inputStartDate" class="w-full px-3.5 py-2.5 rounded-xl bg-void border border-hairline text-platinum text-sm focus:outline-none focus:border-champagne/50">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Carta Principal</label>
+                    <textarea id="inputLetterMessage" rows="4" class="w-full px-3.5 py-2.5 rounded-xl bg-void border border-hairline text-platinum text-sm leading-relaxed focus:outline-none focus:border-champagne/50"></textarea>
+                </div>
+
+                <!-- Edición rápida de las 3 tarjetas -->
+                <div class="space-y-3 pt-2 border-t border-hairline">
+                    <p class="text-[10px] uppercase tracking-[0.2em] text-champagne">Tarjetas de Detalles</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div class="space-y-1.5">
+                            <input type="text" id="inputCard1Title" placeholder="Título 1" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-champagne text-xs focus:outline-none focus:border-champagne/50">
+                            <textarea id="inputCard1Text" rows="2" placeholder="Nota 1" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-platinum text-xs focus:outline-none focus:border-champagne/50"></textarea>
+                        </div>
+                        <div class="space-y-1.5">
+                            <input type="text" id="inputCard2Title" placeholder="Título 2" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-champagne text-xs focus:outline-none focus:border-champagne/50">
+                            <textarea id="inputCard2Text" rows="2" placeholder="Nota 2" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-platinum text-xs focus:outline-none focus:border-champagne/50"></textarea>
+                        </div>
+                        <div class="space-y-1.5">
+                            <input type="text" id="inputCard3Title" placeholder="Título 3" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-champagne text-xs focus:outline-none focus:border-champagne/50">
+                            <textarea id="inputCard3Text" rows="2" placeholder="Nota 3" class="w-full px-3 py-1.5 rounded-lg bg-void border border-hairline text-platinum text-xs focus:outline-none focus:border-champagne/50"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-hairline">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Mensaje de la estrella oculta</label>
+                        <input type="text" id="inputSecretMessage" class="w-full px-3.5 py-2 rounded-xl bg-void border border-hairline text-platinum text-xs focus:outline-none focus:border-champagne/50">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-[0.2em] text-mutedgold mb-1.5">Frase al pulsar "Enviar destello"</label>
+                        <input type="text" id="inputFinalLine" class="w-full px-3.5 py-2 rounded-xl bg-void border border-hairline text-platinum text-xs focus:outline-none focus:border-champagne/50">
+                    </div>
+                </div>
+
+                <!-- Caja de Enlace Generado -->
+                <div id="shareLinkBox" class="hidden p-3.5 rounded-xl bg-void border border-champagne/30 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] uppercase tracking-[0.2em] text-champagne">Enlace listo para enviar</span>
+                        <span id="copyFeedback" class="text-[10px] text-champagne/80 hidden">¡Copiado!</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="generatedUrlInput" readonly class="w-full px-3 py-1.5 rounded-lg bg-obsidian border border-hairline text-platinum/80 text-xs select-all focus:outline-none">
+                        <button type="button" id="copyUrlBtn" class="px-3.5 py-1.5 rounded-lg bg-champagne/15 border border-champagne/40 text-champagne text-xs uppercase tracking-wider hover:bg-champagne/25 transition-colors shrink-0">
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-hairline">
+                    <button type="button" id="resetDefaultsBtn" class="text-[11px] uppercase tracking-wider text-mutedgold hover:text-platinum transition-colors">
+                        Restaurar base
+                    </button>
+
+                    <div class="flex items-center gap-2.5">
+                        <button type="submit" class="px-5 py-2.5 rounded-full border border-hairline text-platinum text-xs uppercase tracking-[0.18em] hover:border-champagne/40 transition-colors">
+                            Aplicar
+                        </button>
+                        <button type="button" id="generateShareLinkBtn" class="px-5 py-2.5 rounded-full bg-champagne text-void font-medium text-xs uppercase tracking-[0.18em] hover:bg-platinum transition-colors">
+                            Generar Link Listo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ESTADO POR DEFECTO Y CODIFICACIÓN EN URL (?d=...)
+         * Permite que todo el contenido personalizado viaje dentro del propio link al compartirlo.
+         */
+        const DEFAULT_DATA = {
+            partnerName: "mi amor",
+            senderSignature: "JP",
+            startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+            letterMessage: "A veces me detengo a pensar en todas las coincidencias que tuvieron que ocurrir para encontrarnos, y agradezco cada una.\n\nNo necesito una fecha especial para recordarte lo importante que eres para mí. Eres calma en medio del ruido, mi lugar seguro y la mejor parte de mis días.\n\nGracias por estar, por tu forma de ser y por dejarme caminar a tu lado.",
+            card1Title: "Tu Calma",
+            card1Text: "Contigo el ruido exterior desaparece. Eres el lugar más tranquilo al que siempre quiero volver.",
+            card2Title: "Nuestra Sintonía",
+            card2Text: "Me encanta cómo incluso los momentos más simples a tu lado se convierten en mis favoritos.",
+            card3Title: "Lo Que Viene",
+            card3Text: "No importa qué planes cambien, mientras sigas siendo parte de cada capítulo.",
+            secretMessage: "Te elegiría hoy, mañana y en cada versión de esta vida.",
+            finalLine: "Siempre estoy a un mensaje de distancia. Te quiero."
+        };
+
+        // Funciones seguras Base64 UTF-8 para viajar en parámetros de URL
+        function encodeStateToUrlParam(obj) {
+            try {
+                const jsonStr = JSON.stringify(obj);
+                const bytes = new TextEncoder().encode(jsonStr);
+                let binString = "";
+                bytes.forEach((b) => { binString += String.fromCharCode(b); });
+                return btoa(binString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            } catch (e) {
+                console.warn("Error codificando URL:", e);
+                return "";
+            }
+        }
+
+        function decodeStateFromUrlParam(encoded) {
+            try {
+                let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                while (base64.length % 4) base64 += '=';
+                const binString = atob(base64);
+                const bytes = new Uint8Array(binString.length);
+                for (let i = 0; i < binString.length; i++) {
+                    bytes[i] = binString.charCodeAt(i);
+                }
+                const jsonStr = new TextDecoder().decode(bytes);
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                console.warn("Error decodificando parámetro de URL:", e);
+                return null;
+            }
+        }
+
+        let appData = { ...DEFAULT_DATA };
+
+        // Prioridad 1: Parámetro ?d= en la URL (cuando ella abre el link compartido)
+        // Prioridad 2: localStorage (cuando JP edita en su navegador)
+        function loadInitialState() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedData = urlParams.get('d');
+            if (encodedData) {
+                const decoded = decodeStateFromUrlParam(encodedData);
+                if (decoded && typeof decoded === 'object') {
+                    appData = { ...DEFAULT_DATA, ...decoded };
+                    return;
+                }
+            }
+            try {
+                const saved = localStorage.getItem('obsidianLoveData_v1');
+                if (saved) {
+                    appData = { ...DEFAULT_DATA, ...JSON.parse(saved) };
+                }
+            } catch (e) {}
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('obsidianLoveData_v1', JSON.stringify(appData));
+            } catch (e) {}
+        }
+
+        loadInitialState();
+
+        /**
+         * SINTETIZADOR AMBIENTAL MINIMALISTA (Acordes cálidos graves)
+         */
+        class MinimalAmbientSynth {
+            constructor() {
+                this.ctx = null;
+                this.isPlaying = false;
+                this.intervalId = null;
+                this.masterGain = null;
+                this.chords = [
+                    [130.81, 196.00, 246.94, 293.66], // Cmaj9
+                    [110.00, 164.81, 196.00, 246.94], // Am9
+                    [87.31, 130.81, 174.61, 220.00],  // Fmaj7
+                    [98.00, 146.83, 196.00, 246.94]   // G6
+                ];
+                this.chordIdx = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.09;
+                    this.masterGain.connect(this.ctx.destination);
+                }
+            }
+
+            playChord(freqs) {
+                if (!this.ctx || !this.isPlaying) return;
+                const now = this.ctx.currentTime;
+
+                freqs.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.22 / freqs.length, now + 2.2);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 6.8);
+
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+
+                    osc.start(now + i * 0.2);
+                    osc.stop(now + 7.0);
+                });
+            }
+
+            toggle() {
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                if (this.isPlaying) {
+                    this.isPlaying = false;
+                    clearInterval(this.intervalId);
+                    return false;
+                } else {
+                    this.isPlaying = true;
+                    this.playChord(this.chords[this.chordIdx]);
+                    this.chordIdx = (this.chordIdx + 1) % this.chords.length;
+
+                    this.intervalId = setInterval(() => {
+                        if (!this.isPlaying) return;
+                        this.playChord(this.chords[this.chordIdx]);
+                        this.chordIdx = (this.chordIdx + 1) % this.chords.length;
+                    }, 6000);
+                    return true;
+                }
+            }
+        }
+
+        const synth = new MinimalAmbientSynth();
+
+        /**
+         * EFECTO DE ESCRITURA EDITORIAL
+         */
+        let typewriterTimer = null;
+        function startTypewriter(text) {
+            clearTimeout(typewriterTimer);
+            const target = document.getElementById('typedLetterText');
+            const signature = document.getElementById('letterSignature');
+            target.textContent = '';
+            target.classList.add('typing-cursor');
+            signature.classList.remove('opacity-100');
+            signature.classList.add('opacity-0');
+
+            let i = 0;
+            function step() {
+                if (i < text.length) {
+                    target.textContent += text.charAt(i);
+                    i++;
+                    const ch = text.charAt(i - 1);
+                    let delay = 26;
+                    if (ch === '.' || ch === '\n') delay = 220;
+                    else if (ch === ',') delay = 110;
+                    typewriterTimer = setTimeout(step, delay);
+                } else {
+                    target.classList.remove('typing-cursor');
+                    signature.classList.remove('opacity-0');
+                    signature.classList.add('opacity-100');
+                }
+            }
+            step();
+        }
+
+        /**
+         * APLICAR DATOS A LA INTERFAZ
+         */
+        function renderAppData(retype = false) {
+            document.title = `Para ${appData.partnerName}`;
+            document.getElementById('introPartnerName').textContent = appData.partnerName;
+            document.getElementById('mainPartnerName').textContent = appData.partnerName;
+            document.getElementById('senderSignature').textContent = appData.senderSignature;
+
+            document.getElementById('card1Title').textContent = appData.card1Title;
+            document.getElementById('card1Text').textContent = `"${appData.card1Text}"`;
+            document.getElementById('card2Title').textContent = appData.card2Title;
+            document.getElementById('card2Text').textContent = `"${appData.card2Text}"`;
+            document.getElementById('card3Title').textContent = appData.card3Title;
+            document.getElementById('card3Text').textContent = `"${appData.card3Text}"`;
+
+            document.getElementById('finalGestureLine').textContent = `"${appData.finalLine}"`;
+
+            const startObj = new Date(appData.startDate);
+            if (!isNaN(startObj.getTime())) {
+                const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('startDateDisplay').textContent =
+                    `Desde el ${startObj.toLocaleDateString('es-ES', opts)}`;
+            }
+
+            if (retype) {
+                startTypewriter(appData.letterMessage);
+            }
+        }
+
+        function updateLiveCounter() {
+            const start = new Date(appData.startDate).getTime();
+            const diff = Math.max(0, Date.now() - start);
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / 1000 / 60) % 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+
+            document.getElementById('countDays').textContent = days.toLocaleString('es-ES');
+            document.getElementById('countHours').textContent = String(hours).padStart(2, '0');
+            document.getElementById('countMinutes').textContent = String(minutes).padStart(2, '0');
+            document.getElementById('countSeconds').textContent = String(seconds).padStart(2, '0');
+        }
+
+        /**
+         * CANVAS OBSIDIANA: PARTÍCULAS LENTAS Y UN ÚNICO DESTELLO OCULTO
+         */
+        const canvas = document.getElementById('ambientCanvas');
+        const ctx = canvas.getContext('2d');
+        let dustParticles = [];
+        let embers = [];
+        let pointer = { x: -1000, y: -1000 };
+        let hiddenStar = { rx: 0.84, ry: 0.24, x: 0, y: 0, found: false };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            hiddenStar.x = hiddenStar.rx * canvas.width;
+            hiddenStar.y = hiddenStar.ry * canvas.height;
+        }
+
+        function initDust() {
+            dustParticles = [];
+            const count = Math.min(48, Math.floor((window.innerWidth * window.innerHeight) / 22000));
+            for (let i = 0; i < count; i++) {
+                dustParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.2 + 0.4,
+                    vx: (Math.random() - 0.5) * 0.14,
+                    vy: -Math.random() * 0.16 - 0.04,
+                    alpha: Math.random() * 0.35 + 0.08
+                });
+            }
+        }
+
+        function spawnEmbers(x, y, amount = 24) {
+            for (let i = 0; i < amount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 1.6 + 0.4;
+                embers.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 0.4,
+                    life: 1,
+                    size: Math.random() * 1.8 + 0.8
+                });
+            }
+        }
+
+        let secretToastTimer = null;
+        function revealSecretToast() {
+            const toast = document.getElementById('secretToast');
+            document.getElementById('secretMessageText').textContent = `"${appData.secretMessage}"`;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(secretToastTimer);
+            secretToastTimer = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 5200);
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Polvo luminoso sutil
+            dustParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                const dx = pointer.x - p.x;
+                const dy = pointer.y - p.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 100) {
+                    p.x -= dx * 0.008;
+                    p.y -= dy * 0.008;
+                }
+
+                if (p.y < -10) p.y = canvas.height + 10;
+                if (p.x < -10) p.x = canvas.width + 10;
+                if (p.x > canvas.width + 10) p.x = -10;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(214, 199, 178, ${p.alpha})`;
+                ctx.fill();
+            });
+
+            // 2. Única estrella oculta discreta
+            const pulse = Math.sin(Date.now() * 0.0025) * 3;
+            const haloRadius = (hiddenStar.found ? 9 : 13) + pulse;
+            const grad = ctx.createRadialGradient(hiddenStar.x, hiddenStar.y, 0.5, hiddenStar.x, hiddenStar.y, haloRadius * 2);
+            grad.addColorStop(0, 'rgba(232, 228, 223, 0.85)');
+            grad.addColorStop(0.4, 'rgba(214, 199, 178, 0.25)');
+            grad.addColorStop(1, 'rgba(214, 199, 178, 0)');
+
+            ctx.beginPath();
+            ctx.arc(hiddenStar.x, hiddenStar.y, haloRadius * 2, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(hiddenStar.x, hiddenStar.y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#E8E4DF';
+            ctx.fill();
+
+            // 3. Chispas cálidas al interactuar
+            for (let i = embers.length - 1; i >= 0; i--) {
+                const e = embers[i];
+                e.x += e.vx;
+                e.y += e.vy;
+                e.life -= 0.018;
+
+                if (e.life <= 0) {
+                    embers.splice(i, 1);
+                    continue;
+                }
+
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(214, 199, 178, ${e.life * 0.85})`;
+                ctx.fill();
+            }
+
+            requestAnimationFrame(animateCanvas);
+        }
+
+        function handlePointerTap(x, y) {
+            pointer.x = x;
+            pointer.y = y;
+            const dist = Math.hypot(x - hiddenStar.x, y - hiddenStar.y);
+            if (dist < 38) {
+                hiddenStar.found = true;
+                document.getElementById('secretStatusText').textContent = 'Destello descubierto';
+                document.getElementById('secretDotIndicator').classList.add('bg-champagne');
+                spawnEmbers(hiddenStar.x, hiddenStar.y, 22);
+                revealSecretToast();
+            }
+        }
+
+        /**
+         * EVENTOS DE INTERFAZ
+         */
+        window.addEventListener('resize', resizeCanvas);
+
+        canvas.addEventListener('mousemove', (e) => {
+            pointer.x = e.clientX;
+            pointer.y = e.clientY;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            handlePointerTap(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                handlePointerTap(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        // Entrada / Sello
+        document.getElementById('openEnvelopeBtn').addEventListener('click', () => {
+            const intro = document.getElementById('introOverlay');
+            const main = document.getElementById('mainExperience');
+            const pill = document.getElementById('secretStatusPill');
+
+            intro.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => { intro.style.display = 'none'; }, 950);
+
+            main.classList.remove('opacity-0', 'pointer-events-none');
+            pill.classList.remove('opacity-0');
+
+            setTimeout(() => {
+                startTypewriter(appData.letterMessage);
+            }, 500);
+        });
+
+        document.getElementById('replayLetterBtn').addEventListener('click', () => {
+            startTypewriter(appData.letterMessage);
+        });
+
+        // Audio ambiental
+        document.getElementById('audioToggleBtn').addEventListener('click', () => {
+            const isOn = synth.toggle();
+            const dot = document.getElementById('audioWaveDot');
+            const label = document.getElementById('audioLabel');
+            if (isOn) {
+                dot.classList.remove('bg-mutedgold/40');
+                dot.classList.add('bg-champagne', 'animate-pulse');
+                label.textContent = 'Activo';
+            } else {
+                dot.classList.add('bg-mutedgold/40');
+                dot.classList.remove('bg-champagne', 'animate-pulse');
+                label.textContent = 'Sonido';
+            }
+        });
+
+        // Gesto final: Enviar destello
+        document.getElementById('finalGestureBtn').addEventListener('click', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            spawnEmbers(cx, cy, 36);
+
+            const resp = document.getElementById('finalGestureResponse');
+            resp.classList.remove('hidden');
+        });
+
+        // Modal de Personalización y Enlace Compartible
+        const settingsModal = document.getElementById('settingsModal');
+
+        function populateFormFromState() {
+            document.getElementById('inputPartnerName').value = appData.partnerName;
+            document.getElementById('inputSenderSignature').value = appData.senderSignature;
+            document.getElementById('inputStartDate').value = appData.startDate;
+            document.getElementById('inputLetterMessage').value = appData.letterMessage;
+            document.getElementById('inputCard1Title').value = appData.card1Title;
+            document.getElementById('inputCard1Text').value = appData.card1Text;
+            document.getElementById('inputCard2Title').value = appData.card2Title;
+            document.getElementById('inputCard2Text').value = appData.card2Text;
+            document.getElementById('inputCard3Title').value = appData.card3Title;
+            document.getElementById('inputCard3Text').value = appData.card3Text;
+            document.getElementById('inputSecretMessage').value = appData.secretMessage;
+            document.getElementById('inputFinalLine').value = appData.finalLine;
+        }
+
+        function readFormIntoState() {
+            appData.partnerName = document.getElementById('inputPartnerName').value.trim() || DEFAULT_DATA.partnerName;
+            appData.senderSignature = document.getElementById('inputSenderSignature').value.trim() || DEFAULT_DATA.senderSignature;
+            appData.startDate = document.getElementById('inputStartDate').value || DEFAULT_DATA.startDate;
+            appData.letterMessage = document.getElementById('inputLetterMessage').value.trim() || DEFAULT_DATA.letterMessage;
+            appData.card1Title = document.getElementById('inputCard1Title').value.trim() || DEFAULT_DATA.card1Title;
+            appData.card1Text = document.getElementById('inputCard1Text').value.trim() || DEFAULT_DATA.card1Text;
+            appData.card2Title = document.getElementById('inputCard2Title').value.trim() || DEFAULT_DATA.card2Title;
+            appData.card2Text = document.getElementById('inputCard2Text').value.trim() || DEFAULT_DATA.card2Text;
+            appData.card3Title = document.getElementById('inputCard3Title').value.trim() || DEFAULT_DATA.card3Title;
+            appData.card3Text = document.getElementById('inputCard3Text').value.trim() || DEFAULT_DATA.card3Text;
+            appData.secretMessage = document.getElementById('inputSecretMessage').value.trim() || DEFAULT_DATA.secretMessage;
+            appData.finalLine = document.getElementById('inputFinalLine').value.trim() || DEFAULT_DATA.finalLine;
+        }
+
+        document.getElementById('openSettingsBtn').addEventListener('click', () => {
+            populateFormFromState();
+            document.getElementById('shareLinkBox').classList.add('hidden');
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('flex');
+        });
+
+        function closeSettingsModal() {
+            settingsModal.classList.add('hidden');
+            settingsModal.classList.remove('flex');
+        }
+
+        document.getElementById('closeSettingsBtn').addEventListener('click', closeSettingsModal);
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) closeSettingsModal();
+        });
+
+        document.getElementById('settingsForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            readFormIntoState();
+            saveToLocalStorage();
+            renderAppData(true);
+            updateLiveCounter();
+            closeSettingsModal();
+        });
+
+        // Generar URL con todos los datos codificados
+        document.getElementById('generateShareLinkBtn').addEventListener('click', () => {
+            readFormIntoState();
+            saveToLocalStorage();
+            renderAppData(true);
+            updateLiveCounter();
+
+            const encoded = encodeStateToUrlParam(appData);
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareableUrl = `${baseUrl}?d=${encoded}`;
+
+            // Actualizar URL actual sin recargar para vista previa inmediata
+            try {
+                window.history.replaceState({}, '', `?d=${encoded}`);
+            } catch (e) {}
+
+            const urlInput = document.getElementById('generatedUrlInput');
+            urlInput.value = shareableUrl;
+            document.getElementById('shareLinkBox').classList.remove('hidden');
+        });
+
+        // Copiar enlace al portapapeles de forma compatible
+        document.getElementById('copyUrlBtn').addEventListener('click', () => {
+            const urlInput = document.getElementById('generatedUrlInput');
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                const feedback = document.getElementById('copyFeedback');
+                feedback.classList.remove('hidden');
+                setTimeout(() => feedback.classList.add('hidden'), 2500);
+            } catch (e) {}
+        });
+
+        document.getElementById('resetDefaultsBtn').addEventListener('click', () => {
+            appData = { ...DEFAULT_DATA };
+            saveToLocalStorage();
+            populateFormFromState();
+            renderAppData(true);
+            updateLiveCounter();
+            document.getElementById('shareLinkBox').classList.add('hidden');
+        });
+
+        /**
+         * INICIALIZACIÓN
+         */
+        window.onload = function () {
+            resizeCanvas();
+            initDust();
+            animateCanvas();
+            renderAppData(false);
+            updateLiveCounter();
+            setInterval(updateLiveCounter, 1000);
+        };
+    </script>
+</body>
+</html>
